@@ -40,6 +40,14 @@ Config.SellPed = {
     heading = 160.04,
 }
 
+-- Discord Webhook
+Config.WebhookURL = "DIN_DISCORD_WEBHOOK_URL"
+Config.Botname = "SMDX NPC Robbery"
+Config.Title = "NPC Robbery"
+Config.Color = "16711680"
+Config.Reward = "Reward: " -- Always leave a empty blank in the end
+Config.Money = "Money: " -- Always leave a empty blank in the end
+
 Config.ShowBlip = false -- Show blip of the sellped
 
 Config.RequiredItems = { -- The player need some of those weapons to rob the NPCs

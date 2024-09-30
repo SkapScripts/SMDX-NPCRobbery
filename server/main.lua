@@ -2,6 +2,39 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 local robberyCooldown = {}
 
+local discordWebhook = Config.WebhookURL
+
+local function sendDiscordLog(playerName, rewardItem, money)
+    local embed = {
+        {
+            ["color"] = Config.Color,
+            ["title"] = Config.title,
+            ["description"] = "**" .. playerName .. "** Robbed a Local.",
+            ["fields"] = {
+                {
+                    ["name"] = Config.Reward,
+                    ["value"] = rewardItem and ("items: " .. rewardItem) or "Inga föremål",
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = Config.Money,
+                    ["value"] = money and ("$" .. money) or "Inga pengar",
+                    ["inline"] = true
+                },
+            },
+            ["footer"] = {
+                ["text"] = "SMDX-NPCRobbery",
+            },
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ") 
+        }
+    }
+
+    PerformHttpRequest(discordWebhook, function(err, text, headers) end, 'POST', json.encode({
+        username = Config.Botname, 
+        embeds = embed 
+    }), { ['Content-Type'] = 'application/json' })
+end
+
 QBCore.Functions.CreateCallback('smdx-npcrobbery:getPoliceCount', function(source, cb)
     local policeCount = 0
     for _, player in pairs(QBCore.Functions.GetPlayers()) do
@@ -17,17 +50,21 @@ RegisterNetEvent('smdx-npcrobbery:giveReward')
 AddEventHandler('smdx-npcrobbery:giveReward', function(item, money)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
+    local playerName = GetPlayerName(src)
+    local rewardItem = nil
 
     if item then
         Player.Functions.AddItem(item, 1)
         TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
         TriggerClientEvent('QBCore:Notify', src, Config.Reciveditem .. item, "success", 5000)
+        rewardItem = item 
     end
 
     if money then
         Player.Functions.AddMoney('cash', money)
         TriggerClientEvent('QBCore:Notify', src, Config.Recived .. Config.Money .. money, "success", 5000)
     end
+    sendDiscordLog(playerName, rewardItem, money)
 end)
 
 RegisterNetEvent('smdx-npcrobbery:sellItem')
