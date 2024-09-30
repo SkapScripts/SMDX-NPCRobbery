@@ -1,8 +1,14 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
 local robberyCooldown = false
-
 local npcPed = Config.Peds
+
+-- Function to get the current number of police officers online
+local function getPoliceCount(callback)
+    QBCore.Functions.TriggerCallback('smdx-npcrobbery:getPoliceCount', function(policeCount)
+        callback(policeCount)
+    end)
+end
 
 local function getReward()
     local totalWeight = 0
@@ -12,14 +18,19 @@ local function getReward()
     
     local randomWeight = math.random(0, totalWeight)
     local currentWeight = 0
+    local selectedReward
 
     for _, reward in pairs(Config.RewardItems) do
         currentWeight = currentWeight + reward.chance
         if randomWeight <= currentWeight then
-            return { type = 'item', value = reward.item }
+            selectedReward = reward.item
+            break
         end
     end
-    return { type = 'money', value = math.random(Config.MoneyReward.min, Config.MoneyReward.max) }
+
+    local moneyReward = math.random(Config.MoneyReward.min, Config.MoneyReward.max)
+
+    return { item = selectedReward, money = moneyReward }
 end
 
 local function hasRequiredItem()
@@ -50,7 +61,11 @@ local function isPedBlacklisted(npcPed)
     return false
 end
 
-local function handleRobbery(success)
+local function isPedDeadOrDying(npcPed)
+    return IsPedDeadOrDying(npcPed, true)
+end
+
+local function handleRobbery(success, npcPed)
     if success then
         QBCore.Functions.Progressbar("smdx-npcrobbery", Config.Robbing, 5000, false, true, {
             disableMovement = false,
@@ -63,12 +78,15 @@ local function handleRobbery(success)
             flags = 49,
         }, {}, {}, function()
             local reward = getReward()
-            if reward.type == 'item' then
-                TriggerServerEvent('smdx-npcrobbery:giveReward', 'item', reward.value)
-            elseif reward.type == 'money' then
-                TriggerServerEvent('smdx-npcrobbery:giveReward', 'money', reward.value)
+            TriggerServerEvent('smdx-npcrobbery:giveReward', reward.item, reward.money)
+
+            if reward.item then
+                TriggerEvent('inventory:client:ItemBox', QBCore.Shared.Items[reward.item], 'add')
             end
+
             FreezeEntityPosition(npcPed, false)
+            TaskSmartFleePed(npcPed, PlayerPedId(), 500.0, -1, true, true)
+
             Citizen.Wait(Config.RobberyCooldown * 1000)
             robberyCooldown = false
         end, function()
@@ -82,41 +100,30 @@ local function handleRobbery(success)
     end
 end
 
-local function startMinigame(callback)
+local function startMinigame(npcPed)
     if Config.Minigame == "Thermite" then
         exports['ps-ui']:Thermite(function(success)
-            handleRobbery(success)
+            handleRobbery(success, npcPed)
         end, 10, 5, 3)
     elseif Config.Minigame == "Circle" then
         exports['ps-ui']:Circle(function(success)
-            handleRobbery(success)
+            handleRobbery(success, npcPed)
         end, 2, 20)
     elseif Config.Minigame == "Maze" then
         exports['ps-ui']:Maze(function(success)
-            handleRobbery(success)
+            handleRobbery(success, npcPed)
         end, 20)
     elseif Config.Minigame == "VAR" then
         exports['ps-ui']:VarHack(function(success)
-            handleRobbery(success)
+            handleRobbery(success, npcPed)
         end, 2, 3)
     elseif Config.Minigame == "Scrambler" then
         exports['ps-ui']:Scrambler(function(success)
-            handleRobbery(success)
+            handleRobbery(success, npcPed)
         end, Config.MinigameType, 30, 0)
     else
-        print("No valid minigame selected") 
-        callback(false)
+        print("No valid minigame selected")
     end
-end
-
-local function handleAggressiveReaction(npcPed)
-    local randomChance = math.random(1, 100)
-    if randomChance <= Config.AggressiveChance then
-        GiveWeaponToPed(npcPed, GetHashKey(Config.Weapon), 250, false, true)
-        TaskCombatPed(npcPed, PlayerPedId(), 0, 16)
-        return true 
-    end
-    return false
 end
 
 local function startRobbery(npcPed)
@@ -131,6 +138,11 @@ local function startRobbery(npcPed)
         return
     end
 
+    if isPedDeadOrDying(npcPed) then
+        QBCore.Functions.Notify(Config.CantRobDead, 'error', 5000)
+        return
+    end
+
     if not hasRequiredItem() then
         QBCore.Functions.Notify(Config.Specialitem, 'error', 5000)
         return
@@ -141,25 +153,27 @@ local function startRobbery(npcPed)
         return
     end
 
-    local playerPed = PlayerPedId()
+    getPoliceCount(function(policeCount)
+        if policeCount < Config.RequiredPolice then
+            QBCore.Functions.Notify(Config.NotEnoughPolice, 'error', 5000)
+            return
+        end
 
-    robberyCooldown = true
-    cooldownEndTime = GetGameTimer() + (Config.RobberyCooldown * 1000) 
+        local playerPed = PlayerPedId()
 
-    Citizen.SetTimeout(Config.RobberyCooldown * 1000, function()
-        robberyCooldown = false
+        robberyCooldown = true
+        cooldownEndTime = GetGameTimer() + (Config.RobberyCooldown * 1000)
+
+        Citizen.SetTimeout(Config.RobberyCooldown * 1000, function()
+            robberyCooldown = false
+        end)
+
+        TaskPlayAnim(playerPed, "random@mugging3", "handsup_standing_base", 8.0, 8.0, -1, 49, 0, 0, 0, 0)
+        FreezeEntityPosition(npcPed, true)
+        TaskHandsUp(npcPed, -1, playerPed, -1, false)
+
+        startMinigame(npcPed)
     end)
-    if handleAggressiveReaction(npcPed) then
-        robberyCooldown = false
-        return
-    end
-
-    robberyCooldown = true
-    TaskPlayAnim(playerPed, "random@mugging3", "handsup_standing_base", 8.0, 8.0, -1, 49, 0, 0, 0, 0)
-    FreezeEntityPosition(npcPed, true)
-    TaskHandsUp(npcPed, -1, playerPed, -1, false)
-
-    startMinigame()
 end
 
 local function openSellMenu()
@@ -271,27 +285,40 @@ end)
 
 Citizen.CreateThread(function()
     Citizen.Wait(1000)
+
     local function setupTargetForPeds()
         local peds = GetGamePool('CPed')
         for _, ped in ipairs(peds) do
             if DoesEntityExist(ped) and not IsPedAPlayer(ped) then
                 if IsPedHuman(ped) then
-                    exports['qb-target']:AddTargetEntity(ped, {
-                        options = {
-                            {
-                                event = "smdx-npcrobbery:start",
-                                icon = "fas fa-sack-dollar",
-                                label = Config.Rob,
-                                canInteract = function(entity)
-                                    return IsPedHuman(entity) and not IsPedAPlayer(entity)
-                                end,
-                                action = function(entity)
-                                    startRobbery(entity)
-                                end
-                            }
-                        },
-                        distance = 2.5
-                    })
+                    local pedModel = GetEntityModel(ped)
+
+                    for _, model in ipairs(Config.Peds) do
+                        if pedModel == GetHashKey(model) then
+                            exports['qb-target']:AddTargetEntity(ped, {
+                                options = {
+                                    {
+                                        event = "smdx-npcrobbery:start",
+                                        icon = "fas fa-sack-dollar",
+                                        label = Config.Rob,
+                                        canInteract = function(entity)
+                                            local entityModel = GetEntityModel(entity)
+                                            for _, validModel in ipairs(Config.Peds) do
+                                                if entityModel == GetHashKey(validModel) then
+                                                    return true
+                                                end
+                                            end
+                                            return false
+                                        end,
+                                        action = function(entity)
+                                            startRobbery(entity)
+                                        end
+                                    }
+                                },
+                                distance = 2.5
+                            })
+                        end
+                    end
                 end
             end
         end
@@ -300,7 +327,8 @@ Citizen.CreateThread(function()
     setupTargetForPeds()
 
     while true do
-        Citizen.Wait(60000)
+        Citizen.Wait(60000) 
         setupTargetForPeds()
     end
 end)
+

@@ -1,18 +1,34 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
+QBCore.Functions.CreateCallback('smdx-npcrobbery:getPoliceCount', function(source, cb)
+    local policeCount = 0
+    for _, player in pairs(QBCore.Functions.GetPlayers()) do
+        local Player = QBCore.Functions.GetPlayer(player)
+        if Player and Player.PlayerData.job and Player.PlayerData.job.name == "police" then
+            policeCount = policeCount + 1
+        end
+    end
+    cb(policeCount)
+end)
+
 RegisterNetEvent('smdx-npcrobbery:giveReward')
-AddEventHandler('smdx-npcrobbery:giveReward', function(type, value)
+AddEventHandler('smdx-npcrobbery:giveReward', function(item, money)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
-    
-    if type == 'item' then
-        Player.Functions.AddItem(value, 1)
-        TriggerClientEvent('QBCore:Notify', src, Config.Reciveditem .. value, "success", 5000)
-    elseif type == 'money' then
-        Player.Functions.AddMoney('cash', value)
-        TriggerClientEvent('QBCore:Notify', src, Config.Recived, Config.Money .. value, "success", 5000)
+
+    if item then
+        Player.Functions.AddItem(item, 1)
+        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
+        TriggerClientEvent('QBCore:Notify', src, Config.Reciveditem .. item, "success", 5000)
+    end
+
+    if money then
+        Player.Functions.AddMoney('cash', money)
+        TriggerClientEvent('QBCore:Notify', src, Config.Recived .. Config.Money .. money, "success", 5000)
     end
 end)
+
+
 
 RegisterNetEvent('smdx-npcrobbery:sellItem')
 AddEventHandler('smdx-npcrobbery:sellItem', function(itemData)
@@ -60,7 +76,7 @@ QBCore.Commands.Add("checkcooldown", "Check robbery cooldown", {}, false, functi
         if remainingCooldown > 0 then
             TriggerClientEvent('QBCore:Notify', src, Config.Wait .. remainingCooldown .. " " .. Config.Sec, 'error', 5000)
         else
-            TriggerClientEvent('QBCore:Notify', src, "No active cooldown!", 'success', 5000)
+            TriggerClientEvent('QBCore:Notify', src, Config.NoActiveCooldown, 'success', 5000)
         end
     else
         TriggerClientEvent('QBCore:Notify', src, "No active cooldown!", 'success', 5000)

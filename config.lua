@@ -5,6 +5,7 @@ Config.Lang = "ENG"
 Config.MoneyType = "cash" 
 
 Config.AllowPoliceRobbery = false -- False if you don't want the police officers to be able to rob  NPCs.
+Config.RequiredPolice = 2 -- Minimum number of police officers required to allow a robbery
 
 Config.AggressiveChance = 50 -- 50% chance of the ped getting aggressive.
 Config.Weapon = "weapon_pistol"
@@ -83,6 +84,9 @@ if Config.Lang == "ENG" then
     Config.CantrobNPC = "You cannot rob this Local"
     Config.sellnpc = "Selling place"
     Config.NoRobberyAsPolice = "You cant rob locals as a police officer"
+    Config.CantRobDead = "You can't rob a dead person!"
+    Config.NoActiveCooldown = "No active cooldown"
+    Config.NotEnoughPolice = "Not enough police officers online!"
  
 elseif Config.Lang == "SWE" then
     Config.Sell = "Sälj stulna saker"
@@ -109,6 +113,9 @@ elseif Config.Lang == "SWE" then
     Config.CantrobNPC = "Du kan inte råna denna invånaren"
     Config.sellnpc = "Sälj Ställe"
     Config.NoRobberyAsPolice = "Du kan inte råna invånare som polis"
+    Config.CantRobDead = " Du kan ju förfan inte råna en dö människa!"
+    Config.NoActiveCooldown = "Ingen aktiv cooldown"
+    Config.NotEnoughPolice = "Inte tillräckligt med poliser online!"
 end 
 
 Config.BlacklistedPeds = {
