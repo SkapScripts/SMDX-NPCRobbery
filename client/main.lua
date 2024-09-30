@@ -4,6 +4,45 @@ local robberyCooldown = false
 local npcPed = Config.Peds
 local holdingHostage = false
 local hostagePed = nil
+local propTwo = propTwo or nil
+
+local function Notify(msg, type, time)
+    if Config.UseOxLibsNotification then
+        lib.notify({
+            title = 'Notification',
+            description = msg,
+            type = type,
+            duration = time
+        })
+    else
+        QBCore.Functions.Notify(msg, type, time)
+    end
+end
+
+local function ShowProgressBar(name, label, duration, useWhileDead, canCancel, disableControls, animDict, anim, flags, successCallback, failCallback)
+    if Config.UseOxLibsProgressbar then
+        lib.progressBar({
+            duration = duration,
+            label = label,
+            useWhileDead = useWhileDead,
+            canCancel = canCancel,
+            disable = disableControls,
+            anim = {
+                dict = animDict,
+                clip = anim
+            },
+            position = 'bottom',
+        }, successCallback, failCallback)
+    else
+        -- Standard progressbar kallar korrekt (se till att rätt antal parametrar skickas)
+        QBCore.Functions.Progressbar(name, label, duration, useWhileDead, canCancel, disableControls, {
+            animDict = animDict,
+            anim = anim,
+            flags = flags
+        }, {}, {}, successCallback, failCallback)
+    end
+end
+
 
 local function getPoliceCount(callback)
     QBCore.Functions.TriggerCallback('smdx-npcrobbery:getPoliceCount', function(policeCount)
@@ -16,7 +55,7 @@ local function getReward()
     for _, reward in pairs(Config.RewardItems) do
         totalWeight = totalWeight + reward.chance
     end
-    
+
     local randomWeight = math.random(0, totalWeight)
     local currentWeight = 0
     local selectedReward
@@ -49,7 +88,7 @@ end
 
 local function isPlayerPolice()
     local PlayerData = QBCore.Functions.GetPlayerData()
-    return PlayerData.job.name == "police"  
+    return PlayerData.job.name == "police"
 end
 
 local function isPedBlacklisted(npcPed)
@@ -66,7 +105,6 @@ local function isPedDeadOrDying(npcPed)
     return IsPedDeadOrDying(npcPed, true)
 end
 
-
 local function Dot(v1, v2)
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
 end
@@ -77,11 +115,11 @@ local function isBehindPed(playerPed, npcPed)
     local npcForward = GetEntityForwardVector(npcPed)
 
     local toPlayer = playerCoords - npcCoords
-    toPlayer = toPlayer / #(toPlayer) 
+    toPlayer = toPlayer / #(toPlayer)
 
     local dotProduct = Dot(npcForward, toPlayer)
 
-    return dotProduct < -0.5 
+    return dotProduct < -0.5
 end
 
 function takeHostage(npcPed)
@@ -89,7 +127,7 @@ function takeHostage(npcPed)
         local playerPed = PlayerPedId()
 
         if not isBehindPed(playerPed, npcPed) then
-            QBCore.Functions.Notify(Config.NeedToBeBehind, "error", 5000)
+            Notify(Config.NeedToBeBehind, "error", 5000)
             return
         end
 
@@ -109,28 +147,27 @@ function takeHostage(npcPed)
 
         AttachEntityToEntity(npcPed, PlayerPedId(), 0, 0.0, 0.45, 0.0, 0, 0, 0, false, false, false, false, 2, true)
 
-        exports['qb-core']:DrawText(Config.ReleaseRob, 'center') 
+        exports['qb-core']:DrawText(Config.ReleaseRob, 'center')
 
         Citizen.CreateThread(function()
             while holdingHostage do
-                if IsControlJustPressed(0, Config.Releasekey) then 
+                if IsControlJustPressed(0, Config.Releasekey) then
                     releaseHostage()
                 end
 
-                if IsControlJustPressed(0, Config.RobKey) then 
+                if IsControlJustPressed(0, Config.RobKey) then
                     TaskPlayAnim(playerPed, "random@mugging3", "handsup_standing_base", 8.0, -8.0, -1, 49, 0, 0, 0, 0)
                     startRobbery(hostagePed)
-                    releaseHostage() 
+                    releaseHostage()
                 end
 
                 Citizen.Wait(0)
             end
         end)
     else
-        QBCore.Functions.Notify(Config.HaveAlreadyHostage, "error", 5000)
+        Notify(Config.HaveAlreadyHostage, "error", 5000)
     end
 end
-
 
 function releaseHostage()
     if holdingHostage and hostagePed then
@@ -140,36 +177,38 @@ function releaseHostage()
         ClearPedTasksImmediately(PlayerPedId())
         ClearPedTasksImmediately(hostagePed)
 
-        TaskSmartFleePed(hostagePed, PlayerPedId(), 500.0, -1, true, true) 
+        TaskSmartFleePed(hostagePed, PlayerPedId(), 500.0, -1, true, true)
 
         exports['qb-core']:HideText()
 
-        QBCore.Functions.Notify(Config.YouReleasedHostage, "success", 5000) 
+        Notify(Config.YouReleasedHostage, "success", 5000)
         hostagePed = nil
     end
 end
 
 local function handleRobbery(success, npcPed)
     if success then
-        QBCore.Functions.Progressbar("smdx-npcrobbery", Config.Robbing, 5000, false, true, {
+        ShowProgressBar("smdx-npcrobbery", Config.Robbing, 5000, false, true, {
             disableMovement = false,
             disableCarMovement = false,
             disableMouse = false,
             disableCombat = true,
-        }, {
-            animDict = "random@domestic",
-            anim = "pickup_low",
-            flags = 49,
-        }, {}, {}, function()
+        }, "random@domestic", "pickup_low", 49, function()
             local reward = getReward()
             TriggerServerEvent('smdx-npcrobbery:giveReward', reward.item, reward.money)
 
             if reward.item then
-                TriggerEvent('inventory:client:ItemBox', QBCore.Shared.Items[reward.item], 'add')
+                if Config.UseOxInventory then
+                    exports.ox_inventory:AddItem(PlayerPedId(), reward.item, 1)
+                elseif Config.UseNewQBInventory then
+                    exports['qb-inventory']:AddItem(reward.item, 1)
+                else
+                    TriggerEvent('inventory:client:ItemBox', QBCore.Shared.Items[reward.item], 'add')
+                end
             end
 
             FreezeEntityPosition(npcPed, false)
-            TaskSmartFleePed(npcPed, PlayerPedId(), 500.0, -1, true, true) 
+            TaskSmartFleePed(npcPed, PlayerPedId(), 500.0, -1, true, true)
 
             Citizen.Wait(Config.RobberyCooldown * 1000)
             robberyCooldown = false
@@ -181,7 +220,7 @@ local function handleRobbery(success, npcPed)
             robberyCooldown = false
         end)
     else
-        QBCore.Functions.Notify(Config.RobberyFailed, 'error', 5000)
+        Notify(Config.RobberyFailed, 'error', 5000)
         FreezeEntityPosition(npcPed, false)
         robberyCooldown = false
 
@@ -218,33 +257,33 @@ end
 function startRobbery(npcPed)
     if robberyCooldown then
         local remainingCooldown = math.ceil(cooldownEndTime - GetGameTimer()) / 1000
-        QBCore.Functions.Notify(Config.Wait .. remainingCooldown .. " " .. Config.Sec, 'error', 5000)
+        Notify(Config.Wait .. remainingCooldown .. " " .. Config.Sec, 'error', 5000)
         return
     end
 
     if isPedBlacklisted(npcPed) then
-        QBCore.Functions.Notify(Config.CantrobNPC, 'error', 5000)
+        Notify(Config.CantrobNPC, 'error', 5000)
         return
     end
 
     if isPedDeadOrDying(npcPed) then
-        QBCore.Functions.Notify(Config.CantRobDead, 'error', 5000)
+        Notify(Config.CantRobDead, 'error', 5000)
         return
     end
 
     if not hasRequiredItem() then
-        QBCore.Functions.Notify(Config.Specialitem, 'error', 5000)
+        Notify(Config.Specialitem, 'error', 5000)
         return
     end
 
     if isPlayerPolice() and not Config.AllowPoliceRobbery then
-        QBCore.Functions.Notify(Config.NoRobberyAsPolice, 'error', 5000)
+        Notify(Config.NoRobberyAsPolice, 'error', 5000)
         return
     end
 
     getPoliceCount(function(policeCount)
         if policeCount < Config.RequiredPolice then
-            QBCore.Functions.Notify(Config.NotEnoughPolice, 'error', 5000)
+            Notify(Config.NotEnoughPolice, 'error', 5000)
             return
         end
 
@@ -269,14 +308,14 @@ local function openSellMenu()
     local playerPed = PlayerPedId()
     local PlayerData = QBCore.Functions.GetPlayerData()
 
-    local itemsForSale = {} 
+    local itemsForSale = {}
 
     for _, itemData in pairs(PlayerData.items) do
         if itemData.amount > 0 then
             local minPrice = Config.ItemSellPrice[itemData.name] and Config.ItemSellPrice[itemData.name].min or 0
             local maxPrice = Config.ItemSellPrice[itemData.name] and Config.ItemSellPrice[itemData.name].max or 0
             local price = math.random(minPrice, maxPrice)
-            
+
             table.insert(itemsForSale, {
                 title = itemData.name,
                 description = "Price: " .. Config.Money .. " " .. price,
@@ -312,23 +351,11 @@ local function openSellMenu()
 
         exports['qb-menu']:openMenu(menuOptions)
     else
-        QBCore.Functions.Notify(Config.Nostolenitems, "error", 5000)
+        Notify(Config.Nostolenitems, "error", 5000)
     end
 end
 
-
-local function handleSellPedInteraction()
-    local playerPed = PlayerPedId()
-    local playerCoords = GetEntityCoords(playerPed)
-    local sellPedCoords = Config.SellPed.position
-    local dist = #(playerCoords - sellPedCoords)
-
-    if dist < 2.5 then
-        openSellMenu()
-    end
-end
-
-Citizen.CreateThread(function()
+local function setupPedInteractions()
     local pedHash = GetHashKey(Config.SellPed.model)
     RequestModel(pedHash)
     while not HasModelLoaded(pedHash) do
@@ -342,39 +369,58 @@ Citizen.CreateThread(function()
     SetBlockingOfNonTemporaryEvents(ped, true)
     FreezeEntityPosition(ped, true)
 
-    exports['qb-target']:AddTargetEntity(ped, {
-        options = {
+    if Config.UseOxTarget then
+        exports.ox_target:addLocalEntity(ped, {
             {
-                event = "smdx-npcrobbery:sell",
-                icon = "fas fa-money-bill",
+                name = "ox_sell",
                 label = Config.Stolen,
-                canInteract = function(entity)
-                    return IsPedHuman(entity) and not IsPedAPlayer(entity)
-                end,
-                action = function(entity)
+                icon = "fas fa-money-bill",
+                onSelect = function()
                     openSellMenu()
+                end,
+                canInteract = function()
+                    return true
                 end
             }
-        },
-        distance = 2.5
-    })
+        })
+    else
+        exports['qb-target']:AddTargetEntity(ped, {
+            options = {
+                {
+                    event = "smdx-npcrobbery:sell",
+                    icon = "fas fa-money-bill",
+                    label = Config.Stolen,
+                    canInteract = function(entity)
+                        return IsPedHuman(entity) and not IsPedAPlayer(entity)
+                    end,
+                    action = function(entity)
+                        openSellMenu()
+                    end
+                }
+            },
+            distance = 2.5
+        })
+    end
 
     if Config.ShowBlip then
         local blip = AddBlipForEntity(ped)
-        SetBlipSprite(blip, 408) 
+        SetBlipSprite(blip, 408)
         SetBlipDisplay(blip, 4)
         SetBlipScale(blip, 0.8)
-        SetBlipColour(blip, 2) 
+        SetBlipColour(blip, 2)
         SetBlipAsShortRange(blip, true)
         BeginTextCommandSetBlipName("STRING")
         AddTextComponentSubstringPlayerName(Config.sellnpc)
         EndTextCommandSetBlipName(blip)
     end
-end)
+end
 
 Citizen.CreateThread(function()
     Citizen.Wait(1000)
+    setupPedInteractions()
+end)
 
+Citizen.CreateThread(function()
     local function setupTargetForPeds()
         local peds = GetGamePool('CPed')
         for _, ped in ipairs(peds) do
@@ -384,39 +430,60 @@ Citizen.CreateThread(function()
 
                     for _, model in ipairs(Config.Peds) do
                         if pedModel == GetHashKey(model) then
-                            exports['qb-target']:AddTargetEntity(ped, {
-                                options = {
+                            if Config.UseOxTarget then
+                                exports.ox_target:addLocalEntity(ped, {
                                     {
-                                        event = "smdx-npcrobbery:start",
-                                        icon = "fas fa-sack-dollar",
+                                        name = "ox_robbery",
                                         label = Config.Rob,
-                                        canInteract = function(entity)
-                                            local entityModel = GetEntityModel(entity)
-                                            for _, validModel in ipairs(Config.Peds) do
-                                                if entityModel == GetHashKey(validModel) then
-                                                    return true
-                                                end
-                                            end
-                                            return false
+                                        icon = "fas fa-sack-dollar",
+                                        onSelect = function()
+                                            startRobbery(ped)
                                         end,
-                                        action = function(entity)
-                                            startRobbery(entity)
+                                        canInteract = function()
+                                            return not isPedDeadOrDying(ped)
                                         end
                                     },
                                     {
-                                        event = "smdx-npcrobbery:takeHostage",
-                                        icon = "fas fa-handcuffs",
+                                        name = "ox_takeHostage",
                                         label = Config.TakeHostage,
-                                        canInteract = function(entity)
-                                            return not holdingHostage and not IsPedDeadOrDying(entity)
+                                        icon = "fas fa-handcuffs",
+                                        onSelect = function()
+                                            takeHostage(ped)
                                         end,
-                                        action = function(entity)
-                                            takeHostage(entity)
+                                        canInteract = function()
+                                            return not holdingHostage and not isPedDeadOrDying(ped)
                                         end
                                     }
-                                },
-                                distance = 2.5
-                            })
+                                })
+                            else
+                                exports['qb-target']:AddTargetEntity(ped, {
+                                    options = {
+                                        {
+                                            event = "smdx-npcrobbery:start",
+                                            icon = "fas fa-sack-dollar",
+                                            label = Config.Rob,
+                                            canInteract = function(entity)
+                                                return IsPedHuman(entity)
+                                            end,
+                                            action = function(entity)
+                                                startRobbery(entity)
+                                            end
+                                        },
+                                        {
+                                            event = "smdx-npcrobbery:takeHostage",
+                                            icon = "fas fa-handcuffs",
+                                            label = Config.TakeHostage,
+                                            canInteract = function(entity)
+                                                return not holdingHostage and not IsPedDeadOrDying(entity)
+                                            end,
+                                            action = function(entity)
+                                                takeHostage(entity)
+                                            end
+                                        }
+                                    },
+                                    distance = 2.5
+                                })
+                            end
                         end
                     end
                 end
@@ -427,7 +494,7 @@ Citizen.CreateThread(function()
     setupTargetForPeds()
 
     while true do
-        Citizen.Wait(60000) 
+        Citizen.Wait(60000)
         setupTargetForPeds()
     end
 end)

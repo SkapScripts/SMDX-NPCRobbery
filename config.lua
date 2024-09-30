@@ -22,6 +22,13 @@ Config.Releasekey = 47 -- This is the key for releasing the NPC when holding the
 
 Config.MoneyReward = { min = 100, max = 500 }
 
+Config.UseOxLibsNotification = false  -- True for ox_lib, False for qb notify
+Config.UseOxLibsProgressbar = false    -- True for ox_lib, False for qb progressbar
+Config.UseOxTarget = true -- True for ox_target, False for qb-target             
+-- Config.UseOxInventory = false  -- Not working yet. (Working on)   
+Config.UseNewQBInventory = true   -- Using the new inventory from may? Turn this to true
+
+
 Config.RewardItems = {
     { item = "advancedlockpick", chance = 50 },  
     { item = "water", chance = 30 },  
