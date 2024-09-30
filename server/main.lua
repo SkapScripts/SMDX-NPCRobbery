@@ -1,5 +1,7 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
+local robberyCooldown = {}
+
 QBCore.Functions.CreateCallback('smdx-npcrobbery:getPoliceCount', function(source, cb)
     local policeCount = 0
     for _, player in pairs(QBCore.Functions.GetPlayers()) do
@@ -27,8 +29,6 @@ AddEventHandler('smdx-npcrobbery:giveReward', function(item, money)
         TriggerClientEvent('QBCore:Notify', src, Config.Recived .. Config.Money .. money, "success", 5000)
     end
 end)
-
-
 
 RegisterNetEvent('smdx-npcrobbery:sellItem')
 AddEventHandler('smdx-npcrobbery:sellItem', function(itemData)
@@ -69,17 +69,18 @@ end)
 
 QBCore.Commands.Add("checkcooldown", "Check robbery cooldown", {}, false, function(source, args)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local cooldown = robberyCooldown[src]
 
-    if robberyCooldown then
-        local remainingCooldown = math.ceil(cooldownEndTime - GetGameTimer()) / 1000
-        if remainingCooldown > 0 then
-            TriggerClientEvent('QBCore:Notify', src, Config.Wait .. remainingCooldown .. " " .. Config.Sec, 'error', 5000)
-        else
-            TriggerClientEvent('QBCore:Notify', src, Config.NoActiveCooldown, 'success', 5000)
-        end
+    if cooldown and cooldown > GetGameTimer() then
+        local remainingCooldown = math.ceil((cooldown - GetGameTimer()) / 1000)
+        TriggerClientEvent('QBCore:Notify', src, Config.Wait .. remainingCooldown .. " " .. Config.Sec, 'error', 5000)
     else
-        TriggerClientEvent('QBCore:Notify', src, "No active cooldown!", 'success', 5000)
+        TriggerClientEvent('QBCore:Notify', src, Config.NoActiveCooldown, 'success', 5000)
     end
 end)
 
+RegisterNetEvent('smdx-npcrobbery:setCooldown')
+AddEventHandler('smdx-npcrobbery:setCooldown', function(cooldownTime)
+    local src = source
+    robberyCooldown[src] = GetGameTimer() + (cooldownTime * 1000)
+end)

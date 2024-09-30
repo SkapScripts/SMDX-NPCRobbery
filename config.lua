@@ -5,7 +5,7 @@ Config.Lang = "ENG"
 Config.MoneyType = "cash" 
 
 Config.AllowPoliceRobbery = false -- False if you don't want the police officers to be able to rob  NPCs.
-Config.RequiredPolice = 2 -- Minimum number of police officers required to allow a robbery
+Config.RequiredPolice = 0 -- Minimum number of police officers required to allow a robbery
 
 Config.AggressiveChance = 50 -- 50% chance of the ped getting aggressive.
 Config.Weapon = "weapon_pistol"
@@ -16,6 +16,9 @@ Config.PoliceAlertChance = 50 -- How big of a chache it is for the police to get
 Config.RobberyCooldown = 300
 
 Config.Minigame = "Circle" -- Circle, Maze, VAR, Thermite, Scrambler.
+
+Config.RobKey = 38 -- This is the key for robbing the NPC when having them as Hostage. [38 = E]
+Config.Releasekey = 47 -- This is the key for releasing the NPC when holding them as hostage. [47 = G]
 
 Config.MoneyReward = { min = 100, max = 500 }
 
@@ -75,7 +78,7 @@ if Config.Lang == "ENG" then
     Config.For = " For: " -- Always leave a blank space at the end & beginning.
     Config.InvalidMoney = "Invalid money type in config"
     Config.Recived = "You got " -- Always leave a blank space at the end.
-    Config.Money = "$"
+    Config.Money = "$" 
     Config.Reciveditem = "You recived an item "
     Config.Stolen = "Sell stolen things"
     Config.Nostolenitems = "You have no stolen items to sell"
@@ -87,6 +90,11 @@ if Config.Lang == "ENG" then
     Config.CantRobDead = "You can't rob a dead person!"
     Config.NoActiveCooldown = "No active cooldown"
     Config.NotEnoughPolice = "Not enough police officers online!"
+    Config.YouReleasedHostage = "You released the hostage"
+    Config.HaveAlreadyHostage = "You already got a hostage"
+    Config.ReleaseRob = "[G] Release Hostage | [E] Rob Hostage"
+    Config.TakeHostage = "Take Hostage"
+    Config.NeedToBeBehind = "You need to be behind the local to rob!"
  
 elseif Config.Lang == "SWE" then
     Config.Sell = "Sälj stulna saker"
@@ -116,6 +124,11 @@ elseif Config.Lang == "SWE" then
     Config.CantRobDead = " Du kan ju förfan inte råna en dö människa!"
     Config.NoActiveCooldown = "Ingen aktiv cooldown"
     Config.NotEnoughPolice = "Inte tillräckligt med poliser online!"
+    Config.YouReleasedHostage = "Du släppte gisslan"
+    Config.HaveAlreadyHostage = "Du har redan en gisslan"
+    Config.ReleaseRob = "[G] Släpp | [E] Råna"
+    Config.TakeHostage = "Ta gisslan"
+    Config.NeedToBeBehind = "Du måste vara bakom NPC:n för att ta den som gisslan!"
 end 
 
 Config.BlacklistedPeds = {
