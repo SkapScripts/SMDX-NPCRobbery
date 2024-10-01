@@ -34,7 +34,6 @@ local function ShowProgressBar(name, label, duration, useWhileDead, canCancel, d
             position = 'bottom',
         }, successCallback, failCallback)
     else
-        -- Standard progressbar kallar korrekt (se till att rätt antal parametrar skickas)
         QBCore.Functions.Progressbar(name, label, duration, useWhileDead, canCancel, disableControls, {
             animDict = animDict,
             anim = anim,
