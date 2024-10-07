@@ -9,6 +9,7 @@ Config.RequiredPolice = 0 -- Minimum number of police officers required to allow
 
 Config.AggressiveChance = 50 -- 50% chance of the ped getting aggressive.
 Config.Weapon = "weapon_pistol"
+Config.RobberyMethod = "E" -- If you want to be able to rob the locals with just pressing E, Turn this to E, If just qb-target. Turn it to just "qb-target"
 
 Config.DispatchSystem = "qb-dispatch" -- qb-dispatch, ps-dispatch, "none" for no dispatch
 Config.PoliceAlertChance = 50 -- How big of a chache it is for the police to get alerted, Now it's 50/50 (under 50, The police get alerted, OVer 50, They do not get alerted)
@@ -24,9 +25,9 @@ Config.MoneyReward = { min = 100, max = 500 }
 
 Config.UseOxLibsNotification = false  -- True for ox_lib, False for qb notify
 Config.UseOxLibsProgressbar = false    -- True for ox_lib, False for qb progressbar
-Config.UseOxTarget = true -- True for ox_target, False for qb-target             
+Config.UseOxTarget = false -- True for ox_target, False for qb-target             
 -- Config.UseOxInventory = false  -- Not working yet. (Working on)   
-Config.UseNewQBInventory = true   -- Using the new inventory from may? Turn this to true
+Config.UseNewQBInventory = false   -- Using the new inventory from may? Turn this to true
 
 
 Config.RewardItems = {
@@ -42,9 +43,9 @@ Config.ItemSellPrice = {
 }
 
 Config.SellPed = {
-    model = "mp_m_shopkeep_01", -- Selling ped
-    coords = vector3(317.86, 179.02, 102.60),
-    heading = 160.04,
+    model = "a_m_y_hipster_01", -- Ensure this is a valid model
+    coords = { x = 317.86, y = 179.02, z = 102.60 }, -- Use known good coordinates
+    heading = 160.04
 }
 
 -- Discord Webhook
@@ -110,6 +111,7 @@ if Config.Lang == "ENG" then
     Config.ReleaseRob = "[G] Release Hostage | [E] Rob Hostage"
     Config.TakeHostage = "Take Hostage"
     Config.NeedToBeBehind = "You need to be behind the local to rob!"
+    Config.NeedAim = "You need to aim at the local"
  
 elseif Config.Lang == "SWE" then
     Config.Sell = "Sälj stulna saker"
@@ -144,6 +146,7 @@ elseif Config.Lang == "SWE" then
     Config.ReleaseRob = "[G] Släpp | [E] Råna"
     Config.TakeHostage = "Ta gisslan"
     Config.NeedToBeBehind = "Du måste vara bakom NPC:n för att ta den som gisslan!"
+    Config.NeedAim = "Du måste sikta på NPC:n"
 end 
 
 Config.BlacklistedPeds = {

@@ -419,6 +419,102 @@ Citizen.CreateThread(function()
     setupPedInteractions()
 end)
 
+-- Function to check robbery input
+local function checkRobberyInput(ped)
+    if Config.RobberyMethod == "E" then
+        local playerPed = PlayerPedId()
+        local playerCoords = GetEntityCoords(playerPed)
+        local pedCoords = GetEntityCoords(ped)
+
+        -- Check if the player is close enough to the NPC
+        if Vdist(playerCoords.x, playerCoords.y, playerCoords.z, pedCoords.x, pedCoords.y, pedCoords.z) < 2.0 then
+            -- Check for E key press
+            if IsControlJustPressed(0, 38) then -- E key
+                if IsPlayerFreeAimingAtEntity(PlayerId(), ped) then
+                    Notify("Robbery initiated!", "success", 5000) -- Debug notification
+                    startRobbery(ped)
+                else
+                    Notify("You need to aim at the NPC to rob!", "error", 5000) -- Debug notification
+                end
+            end
+        end
+    end
+end
+
+local function setupSellNPC()
+    local pedHash = GetHashKey(Config.SellPed.model)
+    RequestModel(pedHash)
+
+    -- Wait until the model is loaded
+    while not HasModelLoaded(pedHash) do
+        Citizen.Wait(500)
+    end
+
+    -- Hardcoded coordinates for testing purposes
+    local coords = Config.SellPed.coords or { x = 250.0, y = 250.0, z = 30.0 }
+    
+    local ped = CreatePed(4, pedHash, coords.x, coords.y, coords.z, Config.SellPed.heading, false, true)
+
+    -- Ensure the SellNPC is created
+    if DoesEntityExist(ped) then
+        SetPedAsEnemy(ped, false)
+        SetPedCanRagdoll(ped, false)
+        SetPedCanRagdollFromPlayerImpact(ped, false)
+        SetBlockingOfNonTemporaryEvents(ped, true)
+        FreezeEntityPosition(ped, true)
+
+        -- Add interaction with SellNPC
+        if Config.UseOxTarget then
+            exports.ox_target:addLocalEntity(ped, {
+                {
+                    name = "ox_sell",
+                    label = Config.Stolen,
+                    icon = "fas fa-money-bill",
+                    onSelect = function()
+                        openSellMenu()
+                    end,
+                    canInteract = function()
+                        return true
+                    end
+                }
+            })
+        else
+            exports['qb-target']:AddTargetEntity(ped, {
+                options = {
+                    {
+                        event = "smdx-npcrobbery:sell",
+                        icon = "fas fa-money-bill",
+                        label = Config.Stolen,
+                        canInteract = function(entity)
+                            return IsPedHuman(entity) and not IsPedAPlayer(entity)
+                        end,
+                        action = function(entity)
+                            openSellMenu()
+                        end
+                    }
+                },
+                distance = 2.5
+            })
+        end
+
+        -- Blip for SellNPC
+        if Config.ShowBlip then
+            local blip = AddBlipForEntity(ped)
+            SetBlipSprite(blip, 408)
+            SetBlipDisplay(blip, 4)
+            SetBlipScale(blip, 0.8)
+            SetBlipColour(blip, 2)
+            SetBlipAsShortRange(blip, true)
+            BeginTextCommandSetBlipName("STRING")
+            AddTextComponentSubstringPlayerName(Config.sellnpc)
+            EndTextCommandSetBlipName(blip)
+        end
+    else
+        print("SellNPC did not spawn! Model: " .. Config.SellPed.model .. " Coordinates: " .. coords.x .. ", " .. coords.y .. ", " .. coords.z) -- Debug message
+    end
+end
+
+
 Citizen.CreateThread(function()
     local function setupTargetForPeds()
         local peds = GetGamePool('CPed')
@@ -430,6 +526,7 @@ Citizen.CreateThread(function()
                     for _, model in ipairs(Config.Peds) do
                         if pedModel == GetHashKey(model) then
                             if Config.UseOxTarget then
+                                -- Using Ox Target for interaction
                                 exports.ox_target:addLocalEntity(ped, {
                                     {
                                         name = "ox_robbery",
@@ -455,6 +552,7 @@ Citizen.CreateThread(function()
                                     }
                                 })
                             else
+                                -- Using qb-target for interaction
                                 exports['qb-target']:AddTargetEntity(ped, {
                                     options = {
                                         {
@@ -465,7 +563,9 @@ Citizen.CreateThread(function()
                                                 return IsPedHuman(entity)
                                             end,
                                             action = function(entity)
-                                                startRobbery(entity)
+                                                if Config.RobberyMethod == "qb-target" then
+                                                    startRobbery(entity)
+                                                end
                                             end
                                         },
                                         {
@@ -491,9 +591,13 @@ Citizen.CreateThread(function()
     end
 
     setupTargetForPeds()
+    setupSellNPC() -- Ensure SellNPC is set up
 
     while true do
-        Citizen.Wait(60000)
-        setupTargetForPeds()
+        Citizen.Wait(0) -- Allow for the event loop to continue
+        local peds = GetGamePool('CPed')
+        for _, ped in ipairs(peds) do
+            checkRobberyInput(ped) -- Call the function to check key press and aim
+        end
     end
 end)
