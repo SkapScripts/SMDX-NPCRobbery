@@ -7,7 +7,6 @@ author 'SkapMicke - SMDX Development'
 description 'A NPC Robbery script made by SMDX-Development'
 
 shared_scripts {
-    '@ox_lib/init.lua',
 	'config.lua'
 }
 
@@ -18,4 +17,3 @@ shared_scripts {
 client_scripts {
     'client/main.lua'
 }
-
